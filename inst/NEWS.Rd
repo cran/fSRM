@@ -4,6 +4,16 @@
 \title{News for package 'fSRM'}
 \encoding{UTF-8}
 
+\section{Version 0.3.5}{
+
+\subsection{Changes}{
+	\itemize{
+		\item Bootstrapping standard errors now properly works (set \code{se="boot"} in the \code{fSRM} function.)
+		\item Out-of-bound estimates of correlations are set to NA in the output.
+	}
+}
+}
+
 \section{Version 0.3.3}{
 
 \subsection{Changes}{

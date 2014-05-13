@@ -162,7 +162,7 @@ import <- function() {
       
       # Only return if all fields are completed (except for the indicator and group)
       if (act_from != "From" & act_from != "" & act_to != "To" & act_to != "" & part_from != "From" & part_from != "" & part_to != "To" & part_to != "") { 
-        cat("A new datafile called 'SRMData' is created\n")
+        cat("Data file created. Access it with dat <- getImport()\n")
         tkdestroy(popup)
         tkfocus(tt)
       }
@@ -252,12 +252,14 @@ import <- function() {
     outact <- as.character(tclvalue(Entry10))
     outpar <- as.character(tclvalue(Entry11))
     outrel <- as.character(tclvalue(Entry12))
-    #style <- new.env(parent=globalenv())
-    style$familyeffect <- outfam
-    style$actor <- outact
-    style$partner <- outpar
-    style$relationship <- outrel
-    tkconfigure(change.but, text = "Outputformat confirmed")
+
+	assign("actor", outact, envir=style)
+	assign("partner", outpar, envir=style)
+	assign("familyeffect", outfam, envir=style)
+	assign("relationship", outrel, envir=style)
+	
+	print("Changed output format!")
+    tkconfigure(change.but, text = "Output format confirmed")
   }
   
   
