@@ -1,5 +1,6 @@
 #' @title Run a Social Relations Model with roles ("Family SRM")
 #' @aliases fSRM
+#' @aliases print.fSRM
 #'
 #' @description
 #' Run a Social Relations Model with roles ("Family SRM")
@@ -21,14 +22,16 @@
 #' @param drop In three-member families at least one component has to be dropped. \code{drop} defines which one: "none": drop nothing; "family" - drop family effect; "GR" - drop generalized reciprocities; "actor" - drop actor factors and actor-partner covariances; "partner" - drop partner effects and actor-partner covariances; "default": drop nothing in >= 4 members and drop family effect with 3 members. Although usually not necessary, the drop parameter can also be applied to >= 4 member families.
 #' @param add Additional lavaan syntax pasted at the end of the generated model. Can contain, for example, user specified error correlations.
 #' @param IGSIM Define intragenerational similarity correlations. Must be a list where the levels of actor.id and partner.id are combined, e.g.: \code{IGSIM=list(c("m", "f"), c("c", "y"))}. Here "m"other and "f"ather are defined as one generation, and "y"ounger and "o"lder as the other generation.
-#' @param syntax In that variable the user can directly provide a lavaan model syntax. Then no automatical model syntax is generated; it is important that the variable nakes in the formula
+#' @param syntax In that variable the user can directly provide a lavaan model syntax. Then no automatical model syntax is generated.
 #' @param add.variable Not yet fully implemented: Add external variables to the model syntax.
 #' @param ... Additional arguments passed to the \code{sem} function of \code{lavaan}
 #' @param means Should the structured means of the SRM factors be calculated?
 #' @param pairwise Compute pairwise comparison of actor and partner means between all roles? Only works when \code{means} is also set to TRUE.
 #' @param group Variable name indicating group membership
 #' @param diff Compare groups with the delta method? You need to specify a group identifier in parameter \code{group}. If \code{diff = TRUE} and \code{means = FALSE}, only variances are compared between groups. If \code{diff = TRUE} and \code{means = TRUE}, variances and means are compared between groups.
-#' @param setZero Should misbehaving variances be set to zero? If "negative", all negative variances are constrained to zero. If "nonsig", all nonsignificant variances are constrained to zero. Please note: The purpose of this function is to reproduce published results; usually it is *not* recommended to set non-significant variances to zero!
+#' @param noNegVar Should variance estimates be constrained to be positive?
+#' @param missing Handling of missing values. By default (\code{NA}), Full Information Maximum Likelihood (FIML) is employed in case of missing values. If families with missing values should be excluded, use \code{missing = "listwise"}
+#' @param rolesEqual Maximal constraints: Do roles matter at all? If this parameter is set to TRUE, it is a model with no mean difference, the actor variances equal, partner variances equal, relationship variances equal, and the respective reciprocities equal (Thanks to a suggestion of David Kenny). Model comparisons via \code{anova} can show whether roles matter at all.
 
 ## OLD PARAMETERS, NOT CURRENTLY USED
 # @param err Defines the type of correlations between error terms. err = 1: Correlate same items BETWEEN ALL RATERS (e.g., Dyadic Data Analysis, Kenny, Kashy, & Cook, 2000); err = 2: Correlate same items WITHIN RATERS (e.g., Branje et al., 2003, Eichelsheim)
@@ -36,28 +39,40 @@
 # @param selfmode Defines the style how the selfratings are combined with the latent actor and partner effects. If \code{selfmode="cor"} they are correlated (as in REFERENCE), if \code{selfmode="kq"} the k and q paths are calculated (see Kenny & West, 2010)
 
 #' @details
-#' The \code{fSRM} function relies on the \code{lavaan} package for computation: A syntax for the SRM with roles is generated and then passed to the \code{lavaan} function. Hence, many options of the \code{lavaan} function can be used out-of-the-box (additional parameters are passed to the \code{lavaan} function through the \code{...} operator). For example, one can deal with missing values. The default behavior is to exclude families with missing values (listwise deletion). Set \code{fSRM(..., missing="fiml")} for ML / FIML estimation. Or, you can request bootstrapped standard errors with \code{fSRM(..., se="boot").
+#' The \code{fSRM} function relies on the \code{lavaan} package for computation: A syntax for the SRM with roles is generated and then passed to the \code{lavaan} function. Hence, many options of the \code{lavaan} function can be used out-of-the-box (additional parameters are passed to the \code{lavaan} function through the \code{...} operator). For example, one can deal with missing values. The default behavior is to exclude families with missing values (listwise deletion). Set \code{fSRM(..., missing="fiml")} for ML / FIML estimation. Or, you can request bootstrapped standard errors with \code{fSRM(..., se="boot")}.
+
+#' You can test for a very restricted model by constraining the roles to be equal ("Do roles matter at all?"). Therefore, compare a model with free roles (\code{m1 <- fSRM(..., means=TRUE, rolesEqual = FALSE)}) with a model with equal roles (\code{m2 <- fSRM(..., means=TRUE, rolesEqual=TRUE)}) using \code{anova(m1$fit, m2$fit)} (Thanks to David Kenny for the suggestion).
+
+#' For plotting relative variances and mean structure, see \code{\link{plot.fSRM}}.
 
 #' @references
 #' Kenny, D. A., & West, T. V. (2010). Similarity and Agreement in Self-and Other Perception: A Meta-Analysis. Personality and Social Psychology Review, 14(2), 196-213. doi:10.1177/1088868309353414
 
+#' @seealso \code{\link{plot.fSRM}}, \code{\link{equalMeans}}, \code{\link{mod}}
+
 #' @examples
-#' \dontrun{
 #' # Example from Dyadic Data Analysis
 #' data(two.indicators)
 
 #' # 4 persons, 1 indicator
 #' f4.1 <- fSRM(dep1 ~ actor.id*partner.id | family.id, two.indicators)
-#' f4.1
+#' f4.1		# by default, one-sided p-values and CIs are printed for variances
+#' print(f4.1, var.onesided=FALSE)	# Show two-sided p-values and CIs for variances
+#' plot(f4.1)	# plot relative variances
+#' plot(f4.1, bw=TRUE)
 #' 
 #' # 4 persons, 2 indicators
 #' f4.2 <- fSRM(dep1/dep2 ~ actor.id*partner.id | family.id, two.indicators)
 #' f4.2
+#' plot(f4.2, bw=TRUE)
+#' plot(f4.2, bw=TRUE, onlyStable=TRUE)
 #' 
 #' # 4 persons, 1 indicator, mean structure
 #' f4.1.m <- fSRM(dep1 ~ actor.id*partner.id | family.id, two.indicators, means=TRUE)
 #' f4.1.m
+#' plot(f4.1.m, means=TRUE)		# plot mean structure
 #' 
+#' \dontrun{
 #' # 4 persons, 2 indicators, mean structure
 #' f4.2.m <- fSRM(dep1/dep2 ~ actor.id*partner.id | family.id, two.indicators, means=TRUE)
 #' f4.2.m
@@ -110,10 +125,12 @@
 #' }
 
 fSRM <-
-function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE, diff=FALSE, IGSIM=list(), add.variable=c(), syntax="", group=NULL, ..., setZero="none") {
+function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE, diff=FALSE, IGSIM=list(), add.variable=c(), syntax="", group=NULL, noNegVar=FALSE, rolesEqual=FALSE, missing=NA, ...) {
 	
 	dots <- list(...)
-	setZero <- match.arg(setZero, c("none", "negative", "nonsig"))
+	
+	if (rolesEqual==TRUE & means==FALSE)
+		stop("For the parameter `rolesEqual == TRUE` you also have to set `means=TRUE`.")
 	
 	# TODO: Re-introduce self-ratings? Preliminarily, fix it to FALSE
 	self <- FALSE
@@ -159,6 +176,16 @@ function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE
 	#fam <- na.omit(fam)
 	included <- fam[, group.id]
 	
+	# set defaults for missing option
+	if (is.na(missing)) {
+		if (any(is.na(fam))) {
+			missing <- "fiml"
+			warning("There are missing values in your data set. Model is computed with option `missing = 'fiml'`. This is only valid if the data are missing completely at random (MCAR) or missing at random (MAR)! If you want to exclude families with missing values, use `missing = 'listwise'`", call.=FALSE)
+		} else {
+			missing <- "listwise"
+		}
+	}
+	
 	roles <- sort(unique(data[, actor.id]))
 	
 	# define defaults for drop
@@ -170,11 +197,11 @@ function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE
 	if (drop == "default" & length(roles) > 3 & syntax=="") {drop <- "nothing"}
 	
 	# Do some sanity checks
-	if (length(roles) == 3 & drop == "nothing" & means == FALSE) {warning('Data set with 3-member-groups detected - model is not identified. Maybe you should remove the family effect (drop = "family") or one of the reciprocities?')}
+	if (length(roles) == 3 & drop == "nothing" & means == FALSE) {warning('Data set with 3-member-groups detected - model is not identified. Maybe you should remove the family effect (drop = "family") or one of the reciprocities?', call.=FALSE)}
 	if (!identical(sort(unique(data[, actor.id])), sort(unique(data[, partner.id])))) {
-		warning("Actor.id and Partner.id have different factor levels; results might be wrong!")
+		warning("Actor.id and Partner.id have different factor levels; results might be wrong!", call.=FALSE)
 	}
-	if (diff==TRUE & is.null(group)) stop("For comparing groups with the delta method you have to provide a `group`variable.")
+	if (diff==TRUE & is.null(group)) stop("For comparing groups with the delta method you have to provide a `group` variable.")
 	
 	
 	if (!is.null(group)) {
@@ -185,7 +212,7 @@ function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE
 	
 	# if no syntax is directly provided:
 	if (syntax == "") {
-		syntax0 <- buildSRMSyntaxLatent(roles, var.id, drop=drop, err="default", IGSIM=IGSIM, means=means, pairwise=pairwise, diff=diff, groupnames=groupnames, self=self, add.variable=add.variable)
+		syntax0 <- buildSRMSyntax(roles, var.id, drop=drop, err="default", IGSIM=IGSIM, means=means, pairwise=pairwise, diff=diff, groupnames=groupnames, self=self, add.variable=add.variable, noNegVar=noNegVar, rolesEqual=rolesEqual)
 	
 		syntax <- paste(syntax0, add, sep="\n")
 	} else {
@@ -209,7 +236,8 @@ function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE
 				auto.var 	= TRUE,
 				auto.cov.lv.x = TRUE,
 				auto.cov.y 	= TRUE, 
-				group		= group, ...)
+				group		= group, 
+				missing		= missing, ...)
 		},	  # end of "withCallingHandlers"
 
 		# suppress two types of warning
@@ -241,46 +269,13 @@ function(formula=NULL, data, drop="default", add="", means=FALSE, pairwise=FALSE
 		diff	= diff,
 		group	= group,
 		groupnames = groupnames,
+		latent	= ifelse(length(var.id) == 1, FALSE, TRUE),
 		IGSIM	= IGSIM,
 		self	= self,
 		call	= call,
 		data	= fam)
 	
 	attr(res, "class") <- "fSRM"
-	
-	# ---------------------------------------------------------------------
-	# After fitting: check, if some variances should be set to zero
-	
-	# TODO: Implement for multiple groups.
-	# FE ~~ c(.varA.FE,.varB.FE)*FE + c(0, NA)*FE
-	
-	
-	if (setZero %in% c("negative", "nonsig")) {
-		if (!is.null(group)) {
-			warning("Automatically setting negative variances to zero does not work yet for multiple groups! Negative variances are *not* set to zero!")
-			return(res)
-		}
-		T <- varComp(res, group=1)
-		if (setZero == "negative") {
-			to.zero <- T$component[which(T$variance < 0)]
-		}
-		if (setZero == "nonsig") {
-			to.zero <- T$component[which(T$p.value > .05)]
-			if (length(to.zero) > 0) {
-				warning("Please note: The purpose of this function is to reproduce published results; usually it is *not* recommended to set non-significant variances to zero!")
-			}
-		}
-		if (length(to.zero) > 0) {
-			cat(paste0("Following variances are ", setZero, " and are constrained to be zero:\n", paste(to.zero, collapse="\n"), "\n\nNow reestimating model..."))
-			add <- paste0("\n\n# Set ", setZero, " variances to zero:\n",
-			paste(gsub(" ~~ ", " ~~ 0*", to.zero, fixed=TRUE), collapse="\n"))
-		
-			res2 <- update(res, add=add, setZero="none")
-			return(res2)
-		} else {
-			return(res)
-		}
-	} else {
-		return(res)
-	}
+
+	return(res)
 }
