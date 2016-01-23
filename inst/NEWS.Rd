@@ -4,6 +4,38 @@
 \title{News for package 'fSRM'}
 \encoding{UTF-8}
 
+\section{Version 0.6.4}{
+
+\subsection{Changes}{
+	\itemize{
+		\item Minor changes to provide a clean R CMD check
+	}
+}
+}
+
+\section{Version 0.6.3}{
+
+\subsection{Changes}{
+	\itemize{
+		\item Minor bug fix in import()
+	}
+}
+}
+
+
+\section{Version 0.6.2}{
+
+\subsection{Changes}{
+	\itemize{
+		\item Updated the \code{import} function so that three indicators are possible.
+		\item Fixed minor error in examples.
+		\item fSRM now gives an error if users try to compare more than two groups.
+		\item Updated CITATION file
+	}
+}
+}
+
+
 \section{Version 0.6.1}{
 
 \subsection{Changes}{
